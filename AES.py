@@ -4,18 +4,19 @@ from AESExceptions import KeyLengthException
 from AESTables import sbox, hex_translate
 from Utils import padd
 
-
-nr = {128: 10, 192: 12, 256: 14}
+key_combinations = {128: {'nk': 4, 'nb': 4, 'nr': 10}, 192: {'nk': 6, 'nb': 4, 'nr': 12},
+                    256: {'nk': 8, 'nb': 4, 'nr': 14}}
 
 
 class AES:
     def __init__(self, length=128, key=os.urandom(16)):
-        self.__key = key
+        self.__key = key if len(key) * 8 in key_combinations.keys() else os.urandom(16)
         self.__plain_text = None
-        self.length = length
+        self.__cryptogram = None
+        self.length = length if length in key_combinations.keys() else 128
 
     def generate_key(self, length: int) -> None:
-        if length in [128, 192, 256]:
+        if length in key_combinations.keys():
             self.length = length
             self.__key = os.urandom(int(length / 8))
         else:
@@ -25,19 +26,22 @@ class AES:
         return [text[:4], text[4:8], text[8:12], text[12:16]]
 
     def encrypt(self, plain_text: str, key=None) -> None:
+        self.__plain_text = plain_text
         if len(plain_text) < 16:
             plain_text += padd(plain_text)
-        self.__plain_text = self.split_bytes(plain_text)
+        self.__cryptogram = self.split_bytes(plain_text)
         self.__key = key if key else self.__key
-        self.length = self.length = len(self.__key*8)
+        self.length = self.length = len(self.__key * 8)
         self.add_round_key()
-        for i in range(nr[self.length]):
-            pass
+        for i in range(key_combinations[self.length]['nr']):
+            self.__cryptogram = self.substitute_bytes(self.__cryptogram)
 
     def substitute_bytes(self, text: str) -> str:
-        hex_table = [bytes(char, 'utf-8').hex() for char in text]
-        s_table = [sbox[hex_translate[hex_char[0]]][hex_translate[hex_char[1]]] for hex_char in hex_table]
-        return ''.join(chr(char) for char in s_table)
+        return ''.join([chr(sbox[hex_translate[bytes(char, 'utf-8').hex()[0]]][hex_translate[bytes(char, 'utf-8').hex()[1]]]) for char in text])
+        # hex_table = [bytes(char, 'utf-8').hex() for char in text]
+        # s_table = [sbox[hex_translate[hex_char[0]]][hex_translate[hex_char[1]]] for hex_char in hex_table]
+        # s_table = [sbox[hex_translate[bytes(char, 'utf-8').hex()[0]]][hex_translate[bytes(char, 'utf-8').hex()[1]]] for char in text]
+        # return ''.join(chr(char) for char in s_table)
 
     def mix_columns(self):
         ...
