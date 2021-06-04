@@ -23,13 +23,14 @@ class AES:
             raise KeyLengthException(length=length)
 
     def split_bytes(self, text):
-        return [text[:4], text[4:8], text[8:12], text[12:16]]
+        return [list(text[:4]), list(text[4:8]), list(text[8:12]), list(text[12:16])]
 
     def encrypt(self, plain_text: str, key=None) -> None:
         self.__plain_text = plain_text
+        self.__cryptogram = bytes(plain_text, 'utf-8')
         if len(plain_text) < 16:
-            plain_text += padd(plain_text)
-        self.__cryptogram = self.split_bytes(plain_text)
+            self.__cryptogram = padd(self.__cryptogram)
+        self.__cryptogram = self.split_bytes(self.__cryptogram)
         self.__key = key if key else self.__key
         self.length = self.length = len(self.__key * 8)
         self.add_round_key()
