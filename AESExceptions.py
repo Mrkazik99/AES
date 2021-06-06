@@ -13,3 +13,20 @@ class KeyLengthException(Exception):
 
     def __str__(self) -> str:
         return f'{self.length} -> {self.message}'
+
+
+class HexCodeException(Exception):
+    """Exception raised for wrong Hexadecimal code format
+
+    Attributes:
+        code -- given code
+        message -- message for user
+    """
+
+    def __init__(self, code: str, message="Hex code must be in format 0x00 or \\x00"):
+        self.code = code
+        self.message = message
+        super().__init__(self.message)
+
+    def __str__(self) -> str:
+        return f'{self.code} -> {self.message}'
