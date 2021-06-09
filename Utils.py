@@ -68,3 +68,7 @@ def hex_translate2(hex_code):
         x = str(0)
         y = str(hex_code[2])
     return ''.join([x, y])
+
+
+def hex_transform(text):
+    return bytes.fromhex(text)
