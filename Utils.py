@@ -1,6 +1,5 @@
-from AESTables import hex_values, sbox, inv_sbox
+from AESTables import hex_values
 from AESExceptions import HexCodeException
-from typing import Union
 
 
 def padd(data):
@@ -14,13 +13,6 @@ def padd(data):
 def depadd(data):
     if ord(chr(data[-1])) < 16:
         return data[:-ord(chr(data[-1]))]
-
-
-# def split_blocks(plain_text: Union[str, bytes], size: int) -> list:
-#     blocks = list()
-#     blocks.extend([plain_text[i:i + size] for i in range(0, len(plain_text), size)])
-#     return blocks
-
 
 def xor_bytes(b1, b2):
     result = bytearray()

@@ -1,7 +1,6 @@
 from AES import AES
 from datetime import datetime
 import argparse
-import pathlib
 
 from Utils import hex_transform, padd
 from AESExceptions import NotEnoughArgsException, FileOutputException, NoKeyForDecryptionException, \
