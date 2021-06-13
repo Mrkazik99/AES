@@ -12,7 +12,8 @@ def padd(data):
 
 
 def depadd(data):
-    return data[:-ord(data[-1])]
+    if ord(chr(data[-1])) < 16:
+        return data[:-ord(chr(data[-1]))]
 
 
 # def split_blocks(plain_text: Union[str, bytes], size: int) -> list:

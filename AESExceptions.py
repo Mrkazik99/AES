@@ -77,3 +77,19 @@ class NoKeyForDecryptionException(Exception):
 
     def __str__(self):
         return f'{self.message}'
+
+
+class InlineMessageLengthException(Exception):
+    """Exception raised when user try to decrypt or encrypt inline message longer than 16 bytes
+
+    Attributes:
+        message - message for user
+    """
+
+    def __init__(self, length, message="Your inline message to encrypt or decrypt have to be 16 bytes long"):
+        self.message = message
+        self.length = length
+        super().__init__(self.message)
+
+    def __str__(self):
+        return f'{self.length} -> {self.message}'
