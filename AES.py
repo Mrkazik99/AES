@@ -1,10 +1,8 @@
 import os
-import copy
-from binascii import unhexlify
 
 from AESExceptions import KeyLengthException
-from AESTables import sbox, inv_sbox, rcon, g_field, inv_gfield
-from Utils import padd, depadd, g_mul, xor_bytes, hex_translate, hex_translate2
+from AESTables import sbox, inv_sbox, rcon, galois_field, inverse_galois_field
+from Utils import g_mul, xor_bytes, hex_translate, hex_translate2, depadd
 
 key_combinations = {128: {'nk': 4, 'nb': 4, 'nr': 10}, 192: {'nk': 6, 'nb': 4, 'nr': 12},
                     256: {'nk': 8, 'nb': 4, 'nr': 14}}
@@ -87,9 +85,6 @@ class AES:
     def encrypt(self, plain_text):
         self.plain_text = plain_text
 
-        if len(plain_text) < 16:
-            plain_text = padd(plain_text)
-
         self.split_bytes(plain_text)
 
         self.key_schedule_generator()
@@ -105,50 +100,38 @@ class AES:
         self.shift_rows()
         self.add_round_key(self.key_schedule[self.nr * self.nb:(self.nr + 1) * self.nb])
 
-        return self.pretty_output(self.cryptogram), self.pretty_key(self.key), self.str_key(
-            self.key), self.output_for_decrypt(self.cryptogram)
+        return self.pretty_output()
 
-    def decrypt(self, ciphered_text):
+    def decrypt(self, ciphered_text, pad):
         self.split_bytes(ciphered_text)
         self.key_schedule_generator()
-        print(self.pretty_output(self.cryptogram))
         self.add_round_key(self.key_schedule[self.nr * self.nb:(self.nr + 1) * self.nb])
-        print(self.pretty_output(self.cryptogram))
-        for i in range(self.nr-1, 0, -1):
+        for i in range(self.nr - 1, 0, -1):
             self.inv_shift_rows()
-            print(self.pretty_output(self.cryptogram))
             self.substitute_bytes(True)
-            print(self.pretty_output(self.cryptogram))
             self.add_round_key(self.key_schedule[i * self.nb: (i + 1) * self.nb])
-            print(self.pretty_output(self.cryptogram))
             self.mix_columns(True)
-            print(self.pretty_output(self.cryptogram))
 
         self.inv_shift_rows()
-        print(self.pretty_output(self.cryptogram))
         self.substitute_bytes(True)
-        print(self.pretty_output(self.cryptogram))
         self.add_round_key(self.key_schedule[0:self.nb])
-        print(self.pretty_output(self.cryptogram))
 
         self.plain_text = self.cryptogram
 
-        return self.pretty_output(self.plain_text)
+        if pad:
+            self.plain_text = depadd(self.plain_text)
+
+        return {'str': self.str_output(), 'hex': self.pretty_output()}
 
     def substitute_bytes(self, inverse) -> None:
-        new_matrix = list()
 
-        for col in self.cryptogram:
-            temp = bytearray()
+        for i, col in enumerate(self.cryptogram):
 
-            for byte in col:
+            for j, byte in enumerate(col):
                 if not inverse:
-                    temp.append(sbox[hex_translate(hex(byte))[0]][hex_translate(hex(byte))[1]])
+                    self.cryptogram[i][j] = sbox[hex_translate(hex(byte))[0]][hex_translate(hex(byte))[1]]
                 else:
-                    temp.append(inv_sbox[hex_translate(hex(byte))[0]][hex_translate(hex(byte))[1]])
-            new_matrix.append(temp)
-
-        self.cryptogram = new_matrix
+                    self.cryptogram[i][j] = inv_sbox[hex_translate(hex(byte))[0]][hex_translate(hex(byte))[1]]
 
     def mix_columns(self, inverse):
         new_matrix = list()
@@ -158,33 +141,24 @@ class AES:
 
             for j in range(self.nb):
                 if not inverse:
-                    temp.append(
-                        g_mul(self.cryptogram[i][0], g_field[j][0]) ^ g_mul(self.cryptogram[i][1], g_field[j][1]) ^ \
-                        g_mul(self.cryptogram[i][2], g_field[j][2]) ^ g_mul(self.cryptogram[i][3], g_field[j][3]))
+                    temp.append(g_mul(self.cryptogram[i][0], galois_field[j][0]) ^ \
+                                g_mul(self.cryptogram[i][1], galois_field[j][1]) ^ \
+                                g_mul(self.cryptogram[i][2], galois_field[j][2]) ^ \
+                                g_mul(self.cryptogram[i][3], galois_field[j][3]))
                 else:
-                    temp.append(g_mul(self.cryptogram[i][0], inv_gfield[j][0]) ^ g_mul(self.cryptogram[i][1],
-                                                                                       inv_gfield[j][1]) ^ \
-                                g_mul(self.cryptogram[i][2], inv_gfield[j][2]) ^ g_mul(self.cryptogram[i][3],
-                                                                                       inv_gfield[j][3]))
+                    temp.append(g_mul(self.cryptogram[i][0], inverse_galois_field[j][0]) ^ \
+                                g_mul(self.cryptogram[i][1], inverse_galois_field[j][1]) ^ \
+                                g_mul(self.cryptogram[i][2], inverse_galois_field[j][2]) ^ \
+                                g_mul(self.cryptogram[i][3], inverse_galois_field[j][3]))
+
             new_matrix.append(temp)
 
         self.cryptogram = new_matrix
 
     def add_round_key(self, rkey):
-        new_matrix = list()
-        index = 0
-
-        print(self.pretty_output(rkey))
-
         for i, col in enumerate(self.cryptogram):
-            temp = bytearray()
-
             for j, char in enumerate(col):
-                temp.append(self.cryptogram[i][j] ^ rkey[i][j])
-                index += 1
-            new_matrix.append(temp)
-
-        self.cryptogram = new_matrix
+                self.cryptogram[i][j] = self.cryptogram[i][j] ^ rkey[i][j]
 
     def shift_rows(self):
         self.cryptogram = [
@@ -202,36 +176,22 @@ class AES:
             bytearray([self.cryptogram[3][0], self.cryptogram[2][1], self.cryptogram[1][2], self.cryptogram[0][3]])
         ]
 
-    def pretty_output(self, text):
-        out = 'Output: '
-        for col in text:
+    def pretty_output(self):
+        out = ''
+        for col in self.cryptogram:
             for char in col:
                 out += str(hex_translate2(hex(char))[0]) + str(hex_translate2(hex(char))[1])
         return out
 
-    def pretty_key(self, text):
-        out = 'Key: '
-        for char in text:
+    def pretty_key(self):
+        out = ''
+        for char in self.key:
             out += str(hex_translate2(hex(char))[0]) + str(hex_translate2(hex(char))[1])
         return out
 
-    def str_key(self, text):
-        out = 'Str_key: '
-        for char in text:
-            out += chr(char)
-        return out
-
-    def output_for_decrypt(self, text):
-        out = 'Output: '
-        for col in text:
-            for char in col:
-                out += str(hex_translate2(hex(char))[0]) + str(hex_translate2(hex(char))[1])
-        # out2 = r"\x" + r"\x".join(out[n: n+2] for n in range(0, len(out), 2))
-        return out
-
-    def str_output(self, text):
-        out = 'Output: '
-        for col in text:
+    def str_output(self):
+        out = ''
+        for col in self.cryptogram:
             for char in col:
                 out += chr(char)
         return out
