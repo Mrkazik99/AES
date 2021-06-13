@@ -39,10 +39,11 @@ class AES:
             raise KeyLengthException(len(key) * 8)
 
         self.key_schedule = None
+        self.set_key_params()
 
     def generate_key(self, length: int) -> None:
         if length in key_combinations.keys():
-            self.key = os.urandom(16)
+            self.set_key(os.urandom(int(length/8)))
 
     def key_schedule_generator(self) -> None:
         keys = [bytearray()] * self.nb * (self.nr + 1)

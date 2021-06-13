@@ -14,15 +14,12 @@ def depadd(data):
     if ord(chr(data[-1])) < 16:
         return data[:-ord(chr(data[-1]))]
 
+
 def xor_bytes(b1, b2):
     result = bytearray()
     for b1, b2 in zip(b1, b2):
         result.append(b1 ^ b2)
     return bytes(result)
-
-
-def xor(i1, i2):
-    return i1 ^ i2
 
 
 def g_mul(a, b):
@@ -38,8 +35,6 @@ def g_mul(a, b):
 
 
 def hex_translate(hex_code):
-    x = ''
-    y = ''
     if len(hex_code) == 4:
         x = int(hex_code[2] if hex_code[2].isdigit() else hex_values[hex_code[2]])
         y = int(hex_code[3] if hex_code[3].isdigit() else hex_values[hex_code[3]])
